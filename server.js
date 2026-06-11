@@ -2,7 +2,7 @@ const express = require("express");
 const rateLimit = require("express-rate-limit");
 const cors = require("cors");
 const dotenv = require("dotenv");
-const mongoose = require("mongoose");
+const dbConnection = require("./src/utils/dbConnection");
 const cookieParser = require("cookie-parser");
 const Auth = require("./src/controllers/auth");
 const Plan = require("./src/controllers/plan");
@@ -27,16 +27,7 @@ app.use("/api/auth", Auth);
 app.use("/api", Plan);
 
 // Mongoose connect
-mongoose
-  .connect(process.env.MONGO_URI, {})
-  .then(() => {
-    console.log("✅✅ MongoDB connected");
-  })
-  .catch((err) => {
-    console.error("❌❌ Error connecting MongoDB:", err);
-    process.exit(1);
-  });
-
+dbConnection();
 
 app.listen(Port, (err) => {
   if (err) {

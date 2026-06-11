@@ -1,9 +1,12 @@
+require("dotenv").config();
 const express = require("express");
 const router = express.Router();
 const limiter = require("../middleware/limiter");
 const multer = require("multer");
 const PDFParser = require("pdf2json");
 const Groq = require("groq-sdk");
+const { createClient } = require("@supabase/supabase-js");
+const WebSocket = require("ws");
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -12,6 +15,15 @@ const upload = multer({
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_KEY,{
+    realtime:{
+        transport: WebSocket
+    }
+  }
+);
 
 const extractPdfText = (buffer) => {
   return new Promise((resolve, reject) => {
@@ -45,7 +57,7 @@ router.post(
   upload.single("resume"),
   async (req, res) => {
     try {
-      const { prompt } = req.body;
+      const { prompt, userId } = req.body;
 
       let resumeText = "";
 
@@ -87,19 +99,33 @@ Professional Resume
 
       const resume = completion.choices?.[0]?.message?.content || "";
 
+      const { error } = await supabase.from("resumes").insert([
+        {
+          user_id: userId || null,
+          prompt: prompt || null,
+          resume_text: resume,
+          created_at: new Date().toISOString(),
+        },
+      ]);
+
+      if (error) {
+        return res.status(500).json({
+          success: false,
+          message: error.message,
+        });
+      }
+
       res.status(200).json({
         success: true,
         resume,
       });
     } catch (error) {
-      console.error(error);
-
       res.status(500).json({
         success: false,
         message: error.message,
       });
     }
-  },
+  }
 );
 
 module.exports = router;

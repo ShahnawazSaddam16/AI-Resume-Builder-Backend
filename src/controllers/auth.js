@@ -5,6 +5,7 @@ const dotenv = require("dotenv");
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 const { authMiddleware } = require("../middleware/authMiddleware");
+const limiter = require("../middleware/limiter");
 
 const router = express.Router();
 
@@ -12,7 +13,7 @@ dotenv.config();
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
-router.post("/signin", async (req, res) => {
+router.post("/signin", limiter, async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
@@ -81,7 +82,7 @@ router.post("/signin", async (req, res) => {
   }
 });
 
-router.post("/login", async (req, res) => {
+router.post("/login", limiter, async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -169,7 +170,7 @@ router.get("/me", authMiddleware, async (req, res) => {
   }
 });
 
-router.post("/logout", authMiddleware, async (req, res) => {
+router.post("/logout", authMiddleware, limiter, async (req, res) => {
   try {
     res.clearCookie("token");
 

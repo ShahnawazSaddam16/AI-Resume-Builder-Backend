@@ -12,11 +12,11 @@ const Plan = require("../Models/plan");
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  process.env.SUPABASE_KEY,
   {
-    realtime:{
-        transport: WebSocket
-    }
+    realtime: {
+      transport: WebSocket,
+    },
   }
 );
 
@@ -73,10 +73,17 @@ router.post(
         else if (userPlan.planStatus === "elite") limit = 500;
       }
 
-      const { count } = await supabase
+      const { count, error: countError } = await supabase
         .from("userResumes")
         .select("*", { count: "exact" })
         .eq("userId", String(req.user._id));
+
+      if (countError) {
+        return res.status(500).json({
+          success: false,
+          message: countError.message,
+        });
+      }
 
       if ((count || 0) >= limit) {
         return res.status(403).json({
@@ -137,7 +144,7 @@ ${resumeText || "No resume uploaded"}
         type: "broadcast",
         event: "new-resume",
         payload: {
-          userId: req.user._id,
+          userId: String(req.user._id),
           resume,
         },
       });
@@ -154,5 +161,59 @@ ${resumeText || "No resume uploaded"}
     }
   }
 );
+
+router.get("/user-resumes", limiter, authMiddleware, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("userResumes")
+      .select("*")
+      .eq("userId", String(req.user._id))
+      .order("createdAt", { ascending: false });
+
+    if (error) {
+      return res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
+
+router.get("/resume-history", limiter, authMiddleware, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("resumes_history")
+      .select("*")
+      .eq("userId", String(req.user._id))
+      .order("createdAt", { ascending: false });
+
+    if (error) {
+      return res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
 
 module.exports = router;

@@ -4,10 +4,10 @@ const router = express.Router();
 const limiter = require("../middleware/limiter");
 const multer = require("multer");
 const Groq = require("groq-sdk");
-const { createClient } = require("@supabase/supabase-js");
 const Resume = require("../Models/ai-resumer");
 const { authMiddleware } = require("../middleware/authMiddleware");
 const extractPdfText = require("../utils/extractPdfText");
+const Plan = require("../Models/plan");
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -16,16 +16,6 @@ const upload = multer({
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY,
-  {
-    realtime: {
-      transport: require("ws")
-    }
-  }
-);
 
 router.post(
   "/ai-resume",
@@ -38,14 +28,35 @@ router.post(
 
       let resumeText = "";
 
+      const userPlan = await Plan.findOne({
+        userId: req.user._id,
+      });
+
+      let limit = 1;
+
+      if (userPlan) {
+        if (userPlan.planId === "pro" || userPlan.planId === "elite") {
+          limit = Infinity;
+        }
+      }
+
+      const userResumeCount = await Resume.countDocuments({
+        userId: req.user._id,
+      });
+
+      if (limit !== Infinity && userResumeCount >= limit) {
+        return res.status(403).json({
+          success: false,
+          message: "Plan limit reached. Upgrade your plan.",
+        });
+      }
+
       if (req.file) {
         resumeText = await extractPdfText(req.file.buffer);
       }
 
       const safePrompt =
-        prompt && prompt.length > 20000
-          ? prompt.slice(0, 20000)
-          : prompt;
+        prompt && prompt.length > 20000 ? prompt.slice(0, 20000) : prompt;
 
       const completion = await groq.chat.completions.create({
         model: "llama-3.3-70b-versatile",
@@ -81,15 +92,6 @@ Professional Resume
 
       const resume = completion.choices?.[0]?.message?.content || "";
 
-      await supabase.from("resumes").insert([
-        {
-          userId: req.user._id,
-          prompt: safePrompt || null,
-          resume_text: resume,
-          created_at: new Date().toISOString(),
-        },
-      ]);
-
       await Resume.create({
         userId: req.user ? req.user._id : null,
         prompt: safePrompt || null,
@@ -106,7 +108,7 @@ Professional Resume
         message: error.message,
       });
     }
-  }
+  },
 );
 
 module.exports = router;

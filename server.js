@@ -1,11 +1,11 @@
 const express = require("express");
-const rateLimit = require("express-rate-limit");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const dbConnection = require("./src/utils/dbConnection");
 const cookieParser = require("cookie-parser");
 const Auth = require("./src/controllers/auth");
 const Plan = require("./src/controllers/plan");
+const AIResume = require("./src/controllers/ai-resume");
 
 dotenv.config();
 
@@ -25,6 +25,7 @@ app.use(cors({
 // Routes
 app.use("/api/auth", Auth);
 app.use("/api", Plan);
+app.use("/api", AIResume);
 
 // Mongoose connect
 dbConnection();

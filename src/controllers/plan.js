@@ -206,7 +206,6 @@ router.get("/my-plan", authMiddleware, async (req, res) => {
     const plan = await Plan.findOne({
       userId: req.user._id,
     });
-
     res.json({
       success: true,
       plan,

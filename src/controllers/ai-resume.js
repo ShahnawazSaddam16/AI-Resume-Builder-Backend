@@ -5,17 +5,17 @@ const limiter = require("../middleware/limiter");
 const multer = require("multer");
 const PDFParser = require("pdf2json");
 const Groq = require("groq-sdk");
+const WebSocket = require("ws");
 const { authMiddleware } = require("../middleware/authMiddleware");
 const { createClient } = require("@supabase/supabase-js");
 const Plan = require("../Models/plan");
-const WebSocket = require("ws");
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY,
   {
-    realtime: {
-      transport: WebSocket
+    realtime:{
+        transport: WebSocket
     }
   }
 );
@@ -73,19 +73,12 @@ router.post(
         else if (userPlan.planStatus === "elite") limit = 500;
       }
 
-      const { count: userResumeCount, error: countError } = await supabase
+      const { count } = await supabase
         .from("userResumes")
-        .select("*", { count: "exact", head: true })
-        .eq("userId", req.user._id);
+        .select("*", { count: "exact" })
+        .eq("userId", String(req.user._id));
 
-      if (countError) {
-        return res.status(500).json({
-          success: false,
-          message: countError.message,
-        });
-      }
-
-      if ((userResumeCount || 0) >= limit) {
+      if ((count || 0) >= limit) {
         return res.status(403).json({
           success: false,
           message: "Plan limit reached. Upgrade your plan.",
@@ -113,16 +106,6 @@ ${prompt || ""}
 
 Resume Content:
 ${resumeText || "No resume uploaded"}
-
-Generate:
-Professional Summary
-Skills
-Experience
-Education
-Projects
-Certifications
-ATS Keywords
-Professional Resume
 `,
           },
         ],
@@ -130,11 +113,9 @@ Professional Resume
 
       const resume = completion.choices?.[0]?.message?.content || "";
 
-      const channel = supabase.channel("resume-updates");
-
       await supabase.from("userResumes").insert([
         {
-          userId: req.user._id,
+          userId: String(req.user._id),
           prompt: prompt || "",
           resume,
           createdAt: new Date(),
@@ -143,12 +124,14 @@ Professional Resume
 
       await supabase.from("resumes_history").insert([
         {
-          userId: req.user._id,
+          userId: String(req.user._id),
           prompt: prompt || "",
           resume,
           createdAt: new Date(),
         },
       ]);
+
+      const channel = supabase.channel("resume-updates");
 
       channel.send({
         type: "broadcast",
@@ -164,8 +147,6 @@ Professional Resume
         resume,
       });
     } catch (error) {
-      console.log(error);
-
       res.status(500).json({
         success: false,
         message: error.message,

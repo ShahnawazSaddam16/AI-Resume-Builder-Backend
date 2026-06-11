@@ -3,6 +3,7 @@ const router = express.Router();
 const Stripe = require("stripe");
 const Plan = require("../Models/plan");
 const { authMiddleware } = require("../middleware/authMiddleware");
+const limiter = require("../middleware/limiter");
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -60,7 +61,7 @@ const buildDates = (billing) => {
   return { startDate, endDate };
 };
 
-router.post("/create-payment-intent", authMiddleware, async (req, res) => {
+router.post("/create-payment-intent", authMiddleware, limiter, async (req, res) => {
   try {
     const { planId, billing, price } = req.body;
 
@@ -72,9 +73,7 @@ router.post("/create-payment-intent", authMiddleware, async (req, res) => {
     }
 
     const amount =
-      billing === "yearly"
-        ? Number(price) * 12 * 100
-        : Number(price) * 100;
+      billing === "yearly" ? Number(price) * 12 * 100 : Number(price) * 100;
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
@@ -100,7 +99,7 @@ router.post("/create-payment-intent", authMiddleware, async (req, res) => {
   }
 });
 
-router.post("/create-plan", authMiddleware, async (req, res) => {
+router.post("/create-plan", authMiddleware, limiter, async (req, res) => {
   try {
     const { planId, billing, price, stripePaymentIntentId } = req.body;
 
@@ -134,10 +133,7 @@ router.post("/create-plan", authMiddleware, async (req, res) => {
       planFeatures: meta.features,
       billing,
       pricePerMonth: Number(price),
-      amountPaid:
-        billing === "yearly"
-          ? Number(price) * 12
-          : Number(price),
+      amountPaid: billing === "yearly" ? Number(price) * 12 : Number(price),
       stripePaymentIntentId: stripePaymentIntentId || null,
       status: "active",
       startDate,
@@ -156,7 +152,7 @@ router.post("/create-plan", authMiddleware, async (req, res) => {
   }
 });
 
-router.put("/update-plan", authMiddleware, async (req, res) => {
+router.put("/update-plan", authMiddleware, limiter, async (req, res) => {
   try {
     const { planId, billing, price, stripePaymentIntentId } = req.body;
 
@@ -181,10 +177,7 @@ router.put("/update-plan", authMiddleware, async (req, res) => {
         planFeatures: meta.features,
         billing,
         pricePerMonth: Number(price),
-        amountPaid:
-          billing === "yearly"
-            ? Number(price) * 12
-            : Number(price),
+        amountPaid: billing === "yearly" ? Number(price) * 12 : Number(price),
         stripePaymentIntentId: stripePaymentIntentId || null,
         status: "active",
         startDate,
@@ -193,7 +186,7 @@ router.put("/update-plan", authMiddleware, async (req, res) => {
       {
         new: true,
         upsert: true,
-      }
+      },
     );
 
     res.json({
@@ -227,7 +220,7 @@ router.get("/my-plan", authMiddleware, async (req, res) => {
 });
 
 router.post(
-  "/webhook",
+  "/webhook", limiter,
   express.raw({ type: "application/json" }),
   async (req, res) => {
     const sig = req.headers["stripe-signature"];
@@ -237,7 +230,7 @@ router.post(
       event = stripe.webhooks.constructEvent(
         req.body,
         sig,
-        process.env.STRIPE_WEBHOOK_SECRET
+        process.env.STRIPE_WEBHOOK_SECRET,
       );
     } catch (err) {
       return res.status(400).json({
@@ -248,13 +241,7 @@ router.post(
     if (event.type === "payment_intent.succeeded") {
       const intent = event.data.object;
 
-      const {
-        userId,
-        email,
-        planId,
-        billing,
-        pricePerMonth,
-      } = intent.metadata;
+      const { userId, email, planId, billing, pricePerMonth } = intent.metadata;
 
       const meta = PLAN_META[planId] || PLAN_META.pro;
       const { startDate, endDate } = buildDates(billing);
@@ -282,7 +269,7 @@ router.post(
         {
           new: true,
           upsert: true,
-        }
+        },
       );
     }
 
@@ -294,14 +281,14 @@ router.post(
         { userId },
         {
           status: "failed",
-        }
+        },
       );
     }
 
     res.json({
       received: true,
     });
-  }
+  },
 );
 
 module.exports = router;

@@ -3,11 +3,11 @@ const express = require("express");
 const router = express.Router();
 const limiter = require("../middleware/limiter");
 const multer = require("multer");
-const PDFParser = require("pdf2json");
 const Groq = require("groq-sdk");
 const { createClient } = require("@supabase/supabase-js");
 const Resume = require("../Models/ai-resumer");
 const { authMiddleware } = require("../middleware/authMiddleware");
+const extractPdfText = require("../utils/extractPdfText");
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -27,32 +27,6 @@ const supabase = createClient(
   }
 );
 
-const extractPdfText = (buffer) => {
-  return new Promise((resolve, reject) => {
-    const pdfParser = new PDFParser();
-
-    pdfParser.on("pdfParser_dataError", (err) => {
-      reject(err);
-    });
-
-    pdfParser.on("pdfParser_dataReady", (pdfData) => {
-      let text = "";
-
-      pdfData.Pages.forEach((page) => {
-        page.Texts.forEach((item) => {
-          item.R.forEach((run) => {
-            text += decodeURIComponent(run.T) + " ";
-          });
-        });
-      });
-
-      resolve(text);
-    });
-
-    pdfParser.parseBuffer(buffer);
-  });
-};
-
 router.post(
   "/ai-resume",
   limiter,
@@ -68,6 +42,11 @@ router.post(
         resumeText = await extractPdfText(req.file.buffer);
       }
 
+      const safePrompt =
+        prompt && prompt.length > 20000
+          ? prompt.slice(0, 20000)
+          : prompt;
+
       const completion = await groq.chat.completions.create({
         model: "llama-3.3-70b-versatile",
         temperature: 0.7,
@@ -75,13 +54,13 @@ router.post(
           {
             role: "system",
             content:
-              "You are a professional ATS resume writer. Generate complete ATS optimized resumes.",
+              "You are a professional ATS resume writer. Generate complete ATS optimized resumes. User may provide long input up to 2000 lines; handle it efficiently without truncation unless necessary.",
           },
           {
             role: "user",
             content: `
 Prompt:
-${prompt || ""}
+${safePrompt || ""}
 
 Resume Content:
 ${resumeText || "No resume uploaded"}
@@ -104,15 +83,16 @@ Professional Resume
 
       await supabase.from("resumes").insert([
         {
-          prompt: prompt || null,
+          userId: req.user._id,
+          prompt: safePrompt || null,
           resume_text: resume,
           created_at: new Date().toISOString(),
         },
       ]);
 
       await Resume.create({
-        userId: req.user ? req.user._id : null,   // ✅ SAFE FIX ONLY
-        prompt: prompt || null,
+        userId: req.user ? req.user._id : null,
+        prompt: safePrompt || null,
         resumeText: resume,
       });
 
@@ -120,7 +100,6 @@ Professional Resume
         success: true,
         resume,
       });
-
     } catch (error) {
       res.status(500).json({
         success: false,

@@ -5,6 +5,7 @@ const dotenv = require("dotenv");
 const mongoose = require("mongoose");
 const cookieParser = require("cookie-parser");
 const Auth = require("./src/controllers/auth");
+const Plan = require("./src/controllers/plan");
 
 dotenv.config();
 
@@ -23,6 +24,7 @@ app.use(cors({
 
 // Routes
 app.use("/api/auth", Auth);
+app.use("/api", Plan);
 
 // Mongoose connect
 mongoose

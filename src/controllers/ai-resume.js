@@ -6,7 +6,8 @@ const multer = require("multer");
 const PDFParser = require("pdf2json");
 const Groq = require("groq-sdk");
 const { createClient } = require("@supabase/supabase-js");
-const WebSocket = require("ws");
+const Resume = require("../Models/ai-resumer");
+const { authMiddleware } = require("../middleware/authMiddleware");
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -18,9 +19,10 @@ const groq = new Groq({
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_KEY,{
-    realtime:{
-        transport: WebSocket
+  process.env.SUPABASE_KEY,
+  {
+    realtime: {
+      transport: require("ws")
     }
   }
 );
@@ -54,10 +56,11 @@ const extractPdfText = (buffer) => {
 router.post(
   "/ai-resume",
   limiter,
+  authMiddleware,
   upload.single("resume"),
   async (req, res) => {
     try {
-      const { prompt, userId } = req.body;
+      const { prompt } = req.body;
 
       let resumeText = "";
 
@@ -99,26 +102,25 @@ Professional Resume
 
       const resume = completion.choices?.[0]?.message?.content || "";
 
-      const { error } = await supabase.from("resumes").insert([
+      await supabase.from("resumes").insert([
         {
-          user_id: userId || null,
           prompt: prompt || null,
           resume_text: resume,
           created_at: new Date().toISOString(),
         },
       ]);
 
-      if (error) {
-        return res.status(500).json({
-          success: false,
-          message: error.message,
-        });
-      }
+      await Resume.create({
+        userId: req.user ? req.user._id : null,   // ✅ SAFE FIX ONLY
+        prompt: prompt || null,
+        resumeText: resume,
+      });
 
       res.status(200).json({
         success: true,
         resume,
       });
+
     } catch (error) {
       res.status(500).json({
         success: false,

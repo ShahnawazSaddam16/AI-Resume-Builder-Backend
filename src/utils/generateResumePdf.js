@@ -186,42 +186,39 @@ const generateResumePdf = async (resume, template = "blue") => {
       sectionTitle("Experience");
 
       resume.experience.forEach((item, index) => {
-        if (index > 0) doc.moveDown(0.6);
+        if (index > 0) doc.moveDown(0.8);
 
         doc
           .font("Helvetica-Bold")
           .fontSize(12)
           .fillColor(theme.text)
-          .text(item.role || "", { continued: false, width: maxWidth });
+          .text(item.role || "", { width: maxWidth });
 
-        const companyLineY = doc.y;
-        doc
-          .font("Helvetica")
-          .fontSize(11)
-          .fillColor(theme.primary)
-          .text(item.company || "", { width: maxWidth - 140 });
+        if (item.company) {
+          doc
+            .font("Helvetica")
+            .fontSize(11)
+            .fillColor(theme.primary)
+            .text(item.company, { width: maxWidth });
+        }
 
         if (item.duration) {
           doc
             .font("Helvetica")
             .fontSize(10)
             .fillColor(theme.muted)
-            .text(item.duration, marginLeft + maxWidth - 140, companyLineY, {
-              width: 140,
-              align: "right",
-            });
+            .text(item.duration, { width: maxWidth });
         }
 
         doc.fillColor(theme.text);
-        doc.y = Math.max(doc.y, companyLineY + 16);
 
         if (item.description) {
-          doc.moveDown(0.2);
+          doc.moveDown(0.3);
           doc
             .font("Helvetica")
             .fontSize(10.5)
             .fillColor(theme.text)
-            .text(item.description, { width: maxWidth, lineGap: 2 });
+            .text(item.description, { width: maxWidth, lineGap: 3, align: "justify" });
         }
       });
 
@@ -232,7 +229,7 @@ const generateResumePdf = async (resume, template = "blue") => {
       sectionTitle("Education");
 
       resume.education.forEach((item, index) => {
-        if (index > 0) doc.moveDown(0.5);
+        if (index > 0) doc.moveDown(0.6);
 
         doc
           .font("Helvetica-Bold")
@@ -240,26 +237,23 @@ const generateResumePdf = async (resume, template = "blue") => {
           .fillColor(theme.text)
           .text(item.institution || "", { width: maxWidth });
 
-        const degreeLineY = doc.y;
-        doc
-          .font("Helvetica")
-          .fontSize(11)
-          .fillColor(theme.primary)
-          .text(item.degree || "", { width: maxWidth - 140 });
+        if (item.degree) {
+          doc
+            .font("Helvetica")
+            .fontSize(11)
+            .fillColor(theme.primary)
+            .text(item.degree, { width: maxWidth });
+        }
 
         if (item.duration) {
           doc
             .font("Helvetica")
             .fontSize(10)
             .fillColor(theme.muted)
-            .text(item.duration, marginLeft + maxWidth - 140, degreeLineY, {
-              width: 140,
-              align: "right",
-            });
+            .text(item.duration, { width: maxWidth });
         }
 
         doc.fillColor(theme.text);
-        doc.y = Math.max(doc.y, degreeLineY + 16);
       });
 
       doc.moveDown(0.4);

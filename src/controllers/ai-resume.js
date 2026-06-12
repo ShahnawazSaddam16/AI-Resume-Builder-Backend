@@ -12,6 +12,15 @@ const Plan = require("../Models/plan");
 
 const upload = multer({
   storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024,
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype !== "application/pdf") {
+      return cb(new Error("Only PDF files are allowed"));
+    }
+    cb(null, true);
+  },
 });
 
 const groq = new Groq({
@@ -83,17 +92,25 @@ router.post(
         resumeText = await extractPdfText(req.file.buffer);
       }
 
-      const wordCount = prompt ? prompt.trim().split(/\s+/).length : 0;
+      const hasPdf = !!req.file;
 
-      if (wordCount < 50) {
+      const wordCount = prompt
+        ? prompt.trim().split(/\s+/).filter(Boolean).length
+        : 0;
+
+      if (!hasPdf && wordCount < 50) {
         return res.status(400).json({
           success: false,
-          message: "Prompt must contain at least 50 words.",
+          message:
+            "Provide either a PDF resume or a prompt containing at least 50 words.",
         });
       }
 
-      const safePrompt =
-        prompt && prompt.length > 20000 ? prompt.slice(0, 20000) : prompt;
+      const safePrompt = prompt
+        ? prompt.length > 20000
+          ? prompt.slice(0, 20000)
+          : prompt
+        : "";
 
       const completion = await groq.chat.completions.create({
         model: "llama-3.3-70b-versatile",
@@ -154,7 +171,8 @@ Generate a complete ATS resume and return ONLY this JSON structure:
         ],
       });
 
-      const rawResume = completion.choices?.[0]?.message?.content?.trim() || "";
+      const rawResume =
+        completion.choices?.[0]?.message?.content?.trim() || "";
 
       let resumeData;
 
@@ -167,7 +185,10 @@ Generate a complete ATS resume and return ONLY this JSON structure:
         });
       }
 
-      const pdfBuffer = await generateResumePdf(resumeData, finalTemplate);
+      const pdfBuffer = await generateResumePdf(
+        resumeData,
+        finalTemplate
+      );
 
       const savedResume = await Resume.create({
         userId: req.user ? req.user._id : null,
@@ -186,12 +207,19 @@ Generate a complete ATS resume and return ONLY this JSON structure:
         template: savedResume.template,
       });
     } catch (error) {
+      if (error.code === "LIMIT_FILE_SIZE") {
+        return res.status(400).json({
+          success: false,
+          message: "PDF size must not exceed 10MB.",
+        });
+      }
+
       res.status(500).json({
         success: false,
         message: error.message,
       });
     }
-  },
+  }
 );
 
 module.exports = router;

@@ -80,7 +80,7 @@ router.post(
       }
 
       const safePrompt =
-        prompt && prompt.length > 20000 ? prompt.slice(0, 20000) : prompt;
+        prompt && prompt.length > 2000 ? prompt.slice(0, 2000) : prompt;
 
       const completion = await groq.chat.completions.create({
         model: "llama-3.3-70b-versatile",

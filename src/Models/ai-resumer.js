@@ -15,6 +15,10 @@ const resumeSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    pdf: {
+      type: Buffer,
+      default: null,
+    },
   },
   {
     timestamps: true,

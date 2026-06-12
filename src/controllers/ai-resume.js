@@ -4,6 +4,7 @@ const router = express.Router();
 const limiter = require("../middleware/limiter");
 const multer = require("multer");
 const Groq = require("groq-sdk");
+const PDFDocument = require("pdfkit");
 const Resume = require("../Models/ai-resumer");
 const { authMiddleware } = require("../middleware/authMiddleware");
 const extractPdfText = require("../utils/extractPdfText");
@@ -92,15 +93,48 @@ Professional Resume
 
       const resume = completion.choices?.[0]?.message?.content || "";
 
-      await Resume.create({
+      const doc = new PDFDocument({
+        margin: 50,
+      });
+
+      const chunks = [];
+
+      doc.on("data", (chunk) => chunks.push(chunk));
+
+      const pdfBuffer = await new Promise((resolve) => {
+        doc.on("end", () => {
+          resolve(Buffer.concat(chunks));
+        });
+
+        doc.fillColor("#2563eb");
+        doc.fontSize(24);
+        doc.text("Professional Resume", {
+          align: "center",
+        });
+
+        doc.moveDown();
+
+        doc.fillColor("#000000");
+        doc.fontSize(11);
+        doc.text(resume, {
+          align: "left",
+        });
+
+        doc.end();
+      });
+
+      const savedResume = await Resume.create({
         userId: req.user ? req.user._id : null,
         prompt: safePrompt || null,
         resumeText: resume,
+        pdf: pdfBuffer,
       });
 
       res.status(200).json({
         success: true,
         resume,
+        resumeId: savedResume._id,
+        pdf: pdfBuffer.toString("base64"),
       });
     } catch (error) {
       res.status(500).json({
@@ -108,7 +142,7 @@ Professional Resume
         message: error.message,
       });
     }
-  },
+  }
 );
 
 module.exports = router;

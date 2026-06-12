@@ -25,7 +25,7 @@ router.post(
   upload.single("resume"),
   async (req, res) => {
     try {
-      const { prompt } = req.body;
+      const { prompt, template } = req.body;
 
       let resumeText = "";
 
@@ -132,7 +132,7 @@ Generate a complete ATS resume and return ONLY this JSON structure:
         });
       }
 
-      const pdfBuffer = await generateResumePdf(resumeData);
+      const pdfBuffer = await generateResumePdf(resumeData, template);
 
       const savedResume = await Resume.create({
         userId: req.user ? req.user._id : null,

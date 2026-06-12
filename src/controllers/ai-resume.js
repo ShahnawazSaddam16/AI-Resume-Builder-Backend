@@ -66,7 +66,7 @@ router.post(
           {
             role: "system",
             content:
-              "You are a professional ATS resume writer. Generate complete ATS optimized resumes. User may provide long input up to 2000 lines; handle it efficiently without truncation unless necessary.",
+              "You are a professional ATS resume writer. Return ONLY valid JSON. Do not return markdown. Do not return explanations. Do not wrap JSON inside code blocks.",
           },
           {
             role: "user",
@@ -77,34 +77,73 @@ ${safePrompt || ""}
 Resume Content:
 ${resumeText || "No resume uploaded"}
 
-Generate:
-Professional Summary
-Skills
-Experience
-Education
-Projects
-Certifications
-ATS Keywords
-Professional Resume
+Generate a complete ATS resume and return ONLY this JSON structure:
+
+{
+  "name": "",
+  "title": "",
+  "email": "",
+  "phone": "",
+  "location": "",
+  "linkedin": "",
+  "portfolio": "",
+  "summary": "",
+  "skills": [],
+  "experience": [
+    {
+      "company": "",
+      "role": "",
+      "duration": "",
+      "description": ""
+    }
+  ],
+  "education": [
+    {
+      "institution": "",
+      "degree": "",
+      "duration": ""
+    }
+  ],
+  "projects": [
+    {
+      "name": "",
+      "description": ""
+    }
+  ],
+  "certifications": [],
+  "keywords": []
+}
 `,
           },
         ],
       });
 
-      const resume = completion.choices?.[0]?.message?.content || "";
+      const rawResume =
+        completion.choices?.[0]?.message?.content?.trim() || "";
 
-      const pdfBuffer = await generateResumePdf(resume);
+      let resumeData;
+
+      try {
+        resumeData = JSON.parse(rawResume);
+      } catch {
+        return res.status(500).json({
+          success: false,
+          message: "Failed to generate structured resume",
+        });
+      }
+
+      const pdfBuffer = await generateResumePdf(resumeData);
 
       const savedResume = await Resume.create({
         userId: req.user ? req.user._id : null,
         prompt: safePrompt || null,
-        resumeText: resume,
+        resumeText: JSON.stringify(resumeData),
         pdf: pdfBuffer,
       });
 
       res.status(200).json({
         success: true,
-        resume,
+        resume: resumeData,
         resumeId: savedResume._id,
         pdf: pdfBuffer.toString("base64"),
       });

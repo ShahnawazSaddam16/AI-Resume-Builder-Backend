@@ -62,83 +62,44 @@ const generateResumePdf = async (resume, template = "blue") => {
 
   const theme = themes[template] || themes.blue;
 
-  const maxWidth =
-    doc.page.width - doc.page.margins.left - doc.page.margins.right;
+  const marginLeft = doc.page.margins.left;
+  const marginRight = doc.page.margins.right;
+  const maxWidth = doc.page.width - marginLeft - marginRight;
 
-  const drawSkillTags = (skills) => {
-    let x = doc.page.margins.left;
-    let y = doc.y;
+  const sectionTitle = (title) => {
+    doc.moveDown(0.6);
+    doc
+      .font("Helvetica-Bold")
+      .fontSize(13)
+      .fillColor(theme.primary)
+      .text(title.toUpperCase(), { characterSpacing: 1 });
 
-    skills.forEach((skill) => {
-      const textWidth = doc.widthOfString(skill, { fontSize: 10 });
-      const tagWidth = textWidth + 24;
-      const tagHeight = 24;
+    const lineY = doc.y + 4;
+    doc
+      .moveTo(marginLeft, lineY)
+      .lineTo(marginLeft + maxWidth, lineY)
+      .lineWidth(1)
+      .strokeColor(theme.border)
+      .stroke();
 
-      if (x + tagWidth > doc.page.margins.left + maxWidth) {
-        x = doc.page.margins.left;
-        y += 34;
-      }
-
-      doc
-        .roundedRect(x, y, tagWidth, tagHeight, 8)
-        .fillAndStroke(theme.light, theme.border);
-
-      doc
-        .fillColor(theme.tag)
-        .fontSize(10)
-        .text(skill, x + 12, y + 7, { lineBreak: false });
-
-      x += tagWidth + 10;
-    });
-
-    doc.fillColor("#000000");
-    doc.y = y + 40;
+    doc.fillColor(theme.text);
+    doc.y = lineY + 10;
   };
 
-  const drawBoxList = (items) => {
-    let x = doc.page.margins.left;
+  const drawTagRow = (items, getLabel) => {
+    let x = marginLeft;
     let y = doc.y;
+    const tagHeight = 24;
+    const rowGap = 10;
 
     items.forEach((item) => {
-      const text = typeof item === "string" ? item : item.name || "";
-
-      const textWidth = doc.widthOfString(text, { fontSize: 11 });
-      const boxWidth = textWidth + 30;
-      const boxHeight = 28;
-
-      if (x + boxWidth > doc.page.margins.left + maxWidth) {
-        x = doc.page.margins.left;
-        y += 38;
-      }
-
-      doc
-        .roundedRect(x, y, boxWidth, boxHeight, 8)
-        .fillAndStroke(theme.light, theme.border);
-
-      doc
-        .fillColor(theme.text)
-        .fontSize(11)
-        .text(text, x + 12, y + 8, { lineBreak: false });
-
-      x += boxWidth + 10;
-    });
-
-    doc.fillColor("#000000");
-    doc.y = y + 45;
-  };
-
-  const drawKeywordTags = (keywords) => {
-    let x = doc.page.margins.left;
-    let y = doc.y;
-
-    keywords.forEach((keyword) => {
-      const textWidth = doc.widthOfString(keyword, { fontSize: 10 });
+      const label = getLabel(item);
+      const textWidth = doc.font("Helvetica").fontSize(10).widthOfString(label);
       const tagWidth = textWidth + 24;
-      const tagHeight = 24;
 
-      if (x + tagWidth > doc.page.margins.left + maxWidth) {
-        x = doc.page.margins.left;
-        y += 34;
+      if (x + tagWidth > marginLeft + maxWidth) {
+        x = marginLeft;
+        y += tagHeight + rowGap;
       }
 
       doc
@@ -147,14 +108,15 @@ const generateResumePdf = async (resume, template = "blue") => {
 
       doc
         .fillColor(theme.tag)
+        .font("Helvetica")
         .fontSize(10)
-        .text(keyword, x + 12, y + 7, { lineBreak: false });
+        .text(label, x + 12, y + 7, { lineBreak: false });
 
-      x += tagWidth + 10;
+      x += tagWidth + rowGap;
     });
 
-    doc.fillColor("#000000");
-    doc.y = y + 40;
+    doc.fillColor(theme.text);
+    doc.y = y + tagHeight + 16;
   };
 
   return new Promise((resolve) => {
@@ -162,102 +124,167 @@ const generateResumePdf = async (resume, template = "blue") => {
       resolve(Buffer.concat(chunks));
     });
 
-    doc.fillColor(theme.primary);
-    doc.fontSize(24).text("Professional Resume", { align: "center" });
-    doc.moveDown(2);
-
-    doc.fillColor("#000000");
-
-    if (resume.name) doc.fontSize(20).text(resume.name);
-
-    if (resume.title) {
-      doc.fillColor(theme.muted).fontSize(14).text(resume.title);
-      doc.fillColor("#000000");
+    if (resume.name) {
+      doc
+        .font("Helvetica-Bold")
+        .fontSize(26)
+        .fillColor(theme.text)
+        .text(resume.name, { align: "center" });
     }
 
-    doc.moveDown();
+    if (resume.title) {
+      doc
+        .font("Helvetica")
+        .fontSize(13)
+        .fillColor(theme.primary)
+        .text(resume.title, { align: "center" });
+    }
 
-    if (resume.email) doc.fontSize(11).text(`Email: ${resume.email}`);
-    if (resume.phone) doc.fontSize(11).text(`Phone: ${resume.phone}`);
-    if (resume.location) doc.fontSize(11).text(`Location: ${resume.location}`);
+    doc.moveDown(0.5);
 
-    doc.moveDown();
+    const contactParts = [];
+    if (resume.email) contactParts.push(resume.email);
+    if (resume.phone) contactParts.push(resume.phone);
+    if (resume.location) contactParts.push(resume.location);
+
+    if (contactParts.length) {
+      doc
+        .font("Helvetica")
+        .fontSize(10)
+        .fillColor(theme.muted)
+        .text(contactParts.join("   |   "), { align: "center" });
+    }
+
+    doc.moveDown(0.8);
+
+    const headerLineY = doc.y;
+    doc
+      .moveTo(marginLeft, headerLineY)
+      .lineTo(marginLeft + maxWidth, headerLineY)
+      .lineWidth(1.5)
+      .strokeColor(theme.primary)
+      .stroke();
+
+    doc.y = headerLineY + 16;
+    doc.fillColor(theme.text);
 
     if (resume.summary) {
-      doc.fontSize(16).fillColor(theme.primary).text("Professional Summary");
-      doc.fillColor("#000000");
-      doc.fontSize(11).text(resume.summary, { width: maxWidth });
-      doc.moveDown();
+      sectionTitle("Professional Summary");
+      doc
+        .font("Helvetica")
+        .fontSize(11)
+        .fillColor(theme.text)
+        .text(resume.summary, { width: maxWidth, lineGap: 3 });
     }
 
     if (resume.skills?.length) {
-      doc.fontSize(16).fillColor(theme.primary).text("Skills");
-      doc.moveDown(0.5);
-      drawSkillTags(resume.skills);
-      doc.moveDown();
+      sectionTitle("Skills");
+      drawTagRow(resume.skills, (s) => s);
     }
 
     if (resume.experience?.length) {
-      doc.fontSize(16).fillColor(theme.primary).text("Experience");
-      doc.fillColor("#000000");
+      sectionTitle("Experience");
 
-      resume.experience.forEach((item) => {
+      resume.experience.forEach((item, index) => {
+        if (index > 0) doc.moveDown(0.6);
+
         doc
+          .font("Helvetica-Bold")
           .fontSize(12)
-          .text(`${item.role || ""} - ${item.company || ""}`, {
-            width: maxWidth,
-          });
+          .fillColor(theme.text)
+          .text(item.role || "", { continued: false, width: maxWidth });
 
+        const companyLineY = doc.y;
         doc
-          .fontSize(10)
-          .fillColor(theme.muted)
-          .text(item.duration || "", { width: maxWidth });
+          .font("Helvetica")
+          .fontSize(11)
+          .fillColor(theme.primary)
+          .text(item.company || "", { width: maxWidth - 140 });
 
-        doc.fillColor("#000000");
+        if (item.duration) {
+          doc
+            .font("Helvetica")
+            .fontSize(10)
+            .fillColor(theme.muted)
+            .text(item.duration, marginLeft + maxWidth - 140, companyLineY, {
+              width: 140,
+              align: "right",
+            });
+        }
 
-        doc.fontSize(11).text(item.description || "", {
-          width: maxWidth,
-        });
+        doc.fillColor(theme.text);
+        doc.y = Math.max(doc.y, companyLineY + 16);
 
-        doc.moveDown();
+        if (item.description) {
+          doc.moveDown(0.2);
+          doc
+            .font("Helvetica")
+            .fontSize(10.5)
+            .fillColor(theme.text)
+            .text(item.description, { width: maxWidth, lineGap: 2 });
+        }
       });
+
+      doc.moveDown(0.4);
     }
 
     if (resume.education?.length) {
-      doc.fontSize(16).fillColor(theme.primary).text("Education");
-      doc.fillColor("#000000");
+      sectionTitle("Education");
 
-      resume.education.forEach((item) => {
-        doc.fontSize(12).text(item.institution || "", { width: maxWidth });
-        doc.fontSize(11).text(item.degree || "", { width: maxWidth });
+      resume.education.forEach((item, index) => {
+        if (index > 0) doc.moveDown(0.5);
+
         doc
-          .fontSize(10)
-          .fillColor(theme.muted)
-          .text(item.duration || "", { width: maxWidth });
-        doc.fillColor("#000000");
-        doc.moveDown();
+          .font("Helvetica-Bold")
+          .fontSize(12)
+          .fillColor(theme.text)
+          .text(item.institution || "", { width: maxWidth });
+
+        const degreeLineY = doc.y;
+        doc
+          .font("Helvetica")
+          .fontSize(11)
+          .fillColor(theme.primary)
+          .text(item.degree || "", { width: maxWidth - 140 });
+
+        if (item.duration) {
+          doc
+            .font("Helvetica")
+            .fontSize(10)
+            .fillColor(theme.muted)
+            .text(item.duration, marginLeft + maxWidth - 140, degreeLineY, {
+              width: 140,
+              align: "right",
+            });
+        }
+
+        doc.fillColor(theme.text);
+        doc.y = Math.max(doc.y, degreeLineY + 16);
       });
+
+      doc.moveDown(0.4);
     }
 
     if (resume.projects?.length) {
-      doc.fontSize(16).fillColor(theme.primary).text("Projects");
-      doc.fillColor("#000000");
-      drawBoxList(resume.projects);
+      sectionTitle("Projects");
+      drawTagRow(resume.projects, (p) => (typeof p === "string" ? p : p.name || ""));
     }
 
     if (resume.certifications?.length) {
-      doc.fontSize(16).fillColor(theme.primary).text("Certifications");
-      doc.fillColor("#000000");
-      doc
-        .fontSize(11)
-        .text(resume.certifications.join("\n"), { width: maxWidth });
-      doc.moveDown();
+      sectionTitle("Certifications");
+      resume.certifications.forEach((cert) => {
+        doc
+          .font("Helvetica")
+          .fontSize(11)
+          .fillColor(theme.text)
+          .text(`•  ${cert}`, { width: maxWidth, lineGap: 4 });
+      });
+      doc.moveDown(0.4);
     }
 
     if (resume.keywords?.length) {
-      doc.fontSize(16).fillColor(theme.primary).text("ATS Keywords");
-      doc.fillColor("#000000");
-      drawKeywordTags(resume.keywords);
+      sectionTitle("ATS Keywords");
+      drawTagRow(resume.keywords, (k) => k);
     }
 
     doc.end();

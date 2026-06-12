@@ -83,14 +83,16 @@ router.post(
         resumeText = await extractPdfText(req.file.buffer);
       }
 
-      const lineCount = prompt ? prompt.trim().split(/\r?\n/).length : 0;
+const wordCount = prompt
+  ? prompt.trim().split(/\s+/).length
+  : 0;
 
-      if (lineCount < 20) {
-        return res.status(400).json({
-          success: false,
-          message: "Prompt must contain at least 20 lines.",
-        });
-      }
+if (wordCount < 50) {
+  return res.status(400).json({
+    success: false,
+    message: "Prompt must contain at least 50 words.",
+  });
+}
 
       const safePrompt =
         prompt && prompt.length > 20000 ? prompt.slice(0, 20000) : prompt;

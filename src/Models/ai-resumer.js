@@ -6,6 +6,10 @@ const resumeSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
+    email:{
+      type: String,
+      required: true
+    },
     prompt: {
       type: String,
     },

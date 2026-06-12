@@ -52,6 +52,29 @@ router.post(
         });
       }
 
+      const themes = ["blue", "green", "black", "purple", "orange", "teal"];
+
+      let allowedThemes = ["blue", "orange"];
+
+      let isPremium = false;
+
+      if (userPlan && (userPlan.planId === "pro" || userPlan.planId === "elite")) {
+        allowedThemes = themes;
+        isPremium = true;
+      }
+
+      let finalTemplate = template || "blue";
+
+      if (!allowedThemes.includes(finalTemplate)) {
+        if (!isPremium) {
+          return res.status(403).json({
+            success: false,
+            message: "This theme is not available in free plan. Upgrade to Pro or Elite to use all themes.",
+          });
+        }
+        finalTemplate = "blue";
+      }
+
       if (req.file) {
         resumeText = await extractPdfText(req.file.buffer);
       }
@@ -132,14 +155,15 @@ Generate a complete ATS resume and return ONLY this JSON structure:
         });
       }
 
-      const pdfBuffer = await generateResumePdf(resumeData, template);
+      const pdfBuffer = await generateResumePdf(resumeData, finalTemplate);
 
       const savedResume = await Resume.create({
         userId: req.user ? req.user._id : null,
+        email: req.user.email,
         prompt: safePrompt || null,
         resumeText: JSON.stringify(resumeData),
         pdf: pdfBuffer,
-        template: template || "blue"
+        template: finalTemplate,
       });
 
       res.status(200).json({
@@ -147,7 +171,7 @@ Generate a complete ATS resume and return ONLY this JSON structure:
         resume: resumeData,
         resumeId: savedResume._id,
         pdf: pdfBuffer.toString("base64"),
-        template: savedResume.template
+        template: savedResume.template,
       });
     } catch (error) {
       res.status(500).json({

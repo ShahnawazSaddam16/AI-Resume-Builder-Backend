@@ -139,6 +139,7 @@ Generate a complete ATS resume and return ONLY this JSON structure:
         prompt: safePrompt || null,
         resumeText: JSON.stringify(resumeData),
         pdf: pdfBuffer,
+        template: template || "blue"
       });
 
       res.status(200).json({
@@ -146,6 +147,7 @@ Generate a complete ATS resume and return ONLY this JSON structure:
         resume: resumeData,
         resumeId: savedResume._id,
         pdf: pdfBuffer.toString("base64"),
+        template: savedResume.template
       });
     } catch (error) {
       res.status(500).json({

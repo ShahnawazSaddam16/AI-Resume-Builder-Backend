@@ -5,24 +5,23 @@ const resumeSchema = new mongoose.Schema(
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: false,
     },
     prompt: {
       type: String,
-      default: null,
     },
     resumeText: {
       type: String,
-      required: true,
     },
     pdf: {
       type: Buffer,
-      default: null,
+    },
+    template: {
+      type: String,
+      default: "blue",
+      enum: ["blue", "green", "black", "purple", "orange", "teal"],
     },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
 module.exports = mongoose.model("Resume", resumeSchema);

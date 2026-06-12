@@ -58,7 +58,10 @@ router.post(
 
       let isPremium = false;
 
-      if (userPlan && (userPlan.planId === "pro" || userPlan.planId === "elite")) {
+      if (
+        userPlan &&
+        (userPlan.planId === "pro" || userPlan.planId === "elite")
+      ) {
         allowedThemes = themes;
         isPremium = true;
       }
@@ -69,7 +72,8 @@ router.post(
         if (!isPremium) {
           return res.status(403).json({
             success: false,
-            message: "This theme is not available in free plan. Upgrade to Pro or Elite to use all themes.",
+            message:
+              "This theme is not available in free plan. Upgrade to Pro or Elite to use all themes.",
           });
         }
         finalTemplate = "blue";
@@ -79,8 +83,17 @@ router.post(
         resumeText = await extractPdfText(req.file.buffer);
       }
 
+      const lineCount = prompt ? prompt.trim().split(/\r?\n/).length : 0;
+
+      if (lineCount < 20) {
+        return res.status(400).json({
+          success: false,
+          message: "Prompt must contain at least 20 lines.",
+        });
+      }
+
       const safePrompt =
-        prompt && prompt.length > 2000 ? prompt.slice(0, 2000) : prompt;
+        prompt && prompt.length > 20000 ? prompt.slice(0, 20000) : prompt;
 
       const completion = await groq.chat.completions.create({
         model: "llama-3.3-70b-versatile",
@@ -141,8 +154,7 @@ Generate a complete ATS resume and return ONLY this JSON structure:
         ],
       });
 
-      const rawResume =
-        completion.choices?.[0]?.message?.content?.trim() || "";
+      const rawResume = completion.choices?.[0]?.message?.content?.trim() || "";
 
       let resumeData;
 
@@ -179,7 +191,7 @@ Generate a complete ATS resume and return ONLY this JSON structure:
         message: error.message,
       });
     }
-  }
+  },
 );
 
 module.exports = router;

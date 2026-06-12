@@ -4,10 +4,10 @@ const router = express.Router();
 const limiter = require("../middleware/limiter");
 const multer = require("multer");
 const Groq = require("groq-sdk");
-const PDFDocument = require("pdfkit");
 const Resume = require("../Models/ai-resumer");
 const { authMiddleware } = require("../middleware/authMiddleware");
 const extractPdfText = require("../utils/extractPdfText");
+const generateResumePdf = require("../utils/generateResumePdf");
 const Plan = require("../Models/plan");
 
 const upload = multer({
@@ -93,35 +93,7 @@ Professional Resume
 
       const resume = completion.choices?.[0]?.message?.content || "";
 
-      const doc = new PDFDocument({
-        margin: 50,
-      });
-
-      const chunks = [];
-
-      doc.on("data", (chunk) => chunks.push(chunk));
-
-      const pdfBuffer = await new Promise((resolve) => {
-        doc.on("end", () => {
-          resolve(Buffer.concat(chunks));
-        });
-
-        doc.fillColor("#2563eb");
-        doc.fontSize(24);
-        doc.text("Professional Resume", {
-          align: "center",
-        });
-
-        doc.moveDown();
-
-        doc.fillColor("#000000");
-        doc.fontSize(11);
-        doc.text(resume, {
-          align: "left",
-        });
-
-        doc.end();
-      });
+      const pdfBuffer = await generateResumePdf(resume);
 
       const savedResume = await Resume.create({
         userId: req.user ? req.user._id : null,

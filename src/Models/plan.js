@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const Billing = require("./billing");
 
 const PlanSchema = new mongoose.Schema(
   {
@@ -18,5 +19,32 @@ const PlanSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+PlanSchema.post("save", async function (doc) {
+  try {
+    const exists = await Billing.findOne({ planMongoId: doc._id });
+
+    if (!exists) {
+      await Billing.create({
+        planMongoId: doc._id,
+        userId: doc.userId,
+        email: doc.email,
+        planId: doc.planId,
+        planName: doc.planName,
+        planColor: doc.planColor,
+        planFeatures: doc.planFeatures,
+        billing: doc.billing,
+        pricePerMonth: doc.pricePerMonth,
+        amountPaid: doc.amountPaid,
+        stripePaymentIntentId: doc.stripePaymentIntentId,
+        status: doc.status,
+        startDate: doc.startDate,
+        endDate: doc.endDate,
+      });
+    }
+  } catch (err) {
+    console.error(err);
+  }
+});
 
 module.exports = mongoose.model("Plan", PlanSchema);

@@ -6,6 +6,7 @@ const cookieParser = require("cookie-parser");
 const Auth = require("./src/controllers/auth");
 const Plan = require("./src/controllers/plan");
 const AIResume = require("./src/controllers/ai-resume");
+const Billing = require("./src/controllers/billing");
 
 dotenv.config();
 
@@ -26,6 +27,7 @@ app.use(cors({
 app.use("/api/auth", Auth);
 app.use("/api", Plan);
 app.use("/api", AIResume);
+app.use("/api", Billing);
 
 // Mongoose connect
 dbConnection();

@@ -1,32 +1,28 @@
 const mongoose = require("mongoose");
 
-const billingSchema = new mongoose.Schema(
+const BillingSchema = new mongoose.Schema(
   {
-    userId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
-    planId: {
+    planMongoId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Plan",
       required: true,
+      unique: true,
     },
-    planName: String,
-    amount: Number,
-    currency: String,
-    status: String,
-    stripeCustomerId: String,
-    stripeSubscriptionId: String,
-    stripeInvoiceId: String,
-    billingDate: {
-      type: Date,
-      default: Date.now,
-    },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    email: { type: String, required: true },
+    planId: { type: String, enum: ["starter", "pro", "elite"], required: true },
+    planName: { type: String, required: true },
+    planColor: { type: String, required: true },
+    planFeatures: [{ type: String }],
+    billing: { type: String, enum: ["monthly", "yearly"], required: true },
+    pricePerMonth: { type: Number, required: true },
+    amountPaid: { type: Number, required: true },
+    stripePaymentIntentId: { type: String, default: null },
+    status: { type: String, enum: ["active", "cancelled", "failed", "expired"], default: "active" },
+    startDate: { type: Date, required: true },
+    endDate: { type: Date, required: true },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-module.exports = mongoose.model("Billing", billingSchema);
+module.exports = mongoose.model("Billing", BillingSchema);

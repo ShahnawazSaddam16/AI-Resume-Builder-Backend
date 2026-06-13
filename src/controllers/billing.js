@@ -23,4 +23,34 @@ router.get("/billings", authMiddleware, limiter, async (req, res) => {
   }
 });
 
+router.delete("/billings/:id", authMiddleware, limiter, async (req, res) => {
+  try {
+    const billing = await Billing.findOne({
+      _id: req.params.id,
+      userId: req.user._id,
+    });
+
+    if (!billing) {
+      return res.status(404).json({
+        success: false,
+        message: "Billing record not found",
+      });
+    }
+
+    await Billing.deleteOne({
+      _id: billing._id,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Billing record deleted successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+});
+
 module.exports = router;

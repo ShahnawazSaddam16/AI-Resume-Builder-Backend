@@ -21,30 +21,75 @@ const PlanSchema = new mongoose.Schema(
 );
 
 PlanSchema.post("save", async function (doc) {
-  try {
-    const exists = await Billing.findOne({ planMongoId: doc._id });
-
-    if (!exists) {
-      await Billing.create({
-        planMongoId: doc._id,
-        userId: doc.userId,
-        email: doc.email,
-        planId: doc.planId,
-        planName: doc.planName,
-        planColor: doc.planColor,
-        planFeatures: doc.planFeatures,
-        billing: doc.billing,
-        pricePerMonth: doc.pricePerMonth,
-        amountPaid: doc.amountPaid,
-        stripePaymentIntentId: doc.stripePaymentIntentId,
-        status: doc.status,
-        startDate: doc.startDate,
-        endDate: doc.endDate,
-      });
+  await Billing.findOneAndUpdate(
+    { planMongoId: doc._id },
+    {
+      planMongoId: doc._id,
+      userId: doc.userId,
+      email: doc.email,
+      planId: doc.planId,
+      planName: doc.planName,
+      planColor: doc.planColor,
+      planFeatures: doc.planFeatures,
+      billing: doc.billing,
+      pricePerMonth: doc.pricePerMonth,
+      amountPaid: doc.amountPaid,
+      stripePaymentIntentId: doc.stripePaymentIntentId,
+      status: doc.status,
+      startDate: doc.startDate,
+      endDate: doc.endDate,
+    },
+    {
+      upsert: true,
+      new: true,
     }
-  } catch (err) {
-    console.error(err);
-  }
+  );
+});
+
+PlanSchema.post("findOneAndUpdate", async function () {
+  const doc = await this.model.findOne(this.getQuery());
+
+  if (!doc) return;
+
+  await Billing.findOneAndUpdate(
+    { planMongoId: doc._id },
+    {
+      planMongoId: doc._id,
+      userId: doc.userId,
+      email: doc.email,
+      planId: doc.planId,
+      planName: doc.planName,
+      planColor: doc.planColor,
+      planFeatures: doc.planFeatures,
+      billing: doc.billing,
+      pricePerMonth: doc.pricePerMonth,
+      amountPaid: doc.amountPaid,
+      stripePaymentIntentId: doc.stripePaymentIntentId,
+      status: doc.status,
+      startDate: doc.startDate,
+      endDate: doc.endDate,
+    },
+    {
+      upsert: true,
+      new: true,
+    }
+  );
+});
+
+PlanSchema.post("findOneAndDelete", async function (doc) {
+  if (!doc) return;
+
+  await Billing.deleteOne({
+    planMongoId: doc._id,
+  });
+});
+
+PlanSchema.post("findByIdAndDelete", async function (doc) {
+  if (!doc) return;
+
+  await Billing.deleteOne({
+    planMongoId: doc._id,
+  });
 });
 
 module.exports = mongoose.model("Plan", PlanSchema);

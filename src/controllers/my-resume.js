@@ -22,4 +22,34 @@ router.get("/my-resumes", limiter, authMiddleware, async (req, res) => {
   }
 });
 
+router.delete("/my-resumes/:id", limiter, authMiddleware, async (req, res) => {
+  try {
+    const resume = await Resume.findOne({
+      _id: req.params.id,
+      userId: req.user._id,
+    });
+
+    if (!resume) {
+      return res.status(404).json({
+        success: false,
+        message: "Resume not found",
+      });
+    }
+
+    await Resume.findByIdAndDelete(req.params.id);
+
+    return res.status(200).json({
+      success: true,
+      message: "Resume deleted successfully",
+    });
+  } catch (err) {
+    console.error(err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+});
+
 module.exports = router;

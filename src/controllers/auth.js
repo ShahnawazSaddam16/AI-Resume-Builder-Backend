@@ -6,6 +6,9 @@ const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 const { authMiddleware } = require("../middleware/authMiddleware");
 const limiter = require("../middleware/limiter");
+const Plan = require("../Models/plan");
+const Resume = require("../Models/ai-resumer");
+const Billing = require("../Models/billing");
 
 const router = express.Router();
 
@@ -185,6 +188,32 @@ router.post("/logout", authMiddleware, limiter, async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Logout failed",
+    });
+  }
+});
+
+router.delete("/delete-account", authMiddleware, limiter, async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    await Resume.deleteMany({ userId });
+    await Plan.deleteMany({userId});
+    await Billing.deleteMany({userId});
+
+    await User.findByIdAndDelete(userId);
+
+    res.clearCookie("token");
+
+    return res.status(200).json({
+      success: true,
+      message: "Account deleted successfully",
+    });
+  } catch (err) {
+    console.log("Delete Account Error:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
     });
   }
 });

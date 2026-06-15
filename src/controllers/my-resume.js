@@ -6,11 +6,11 @@ const limiter = require("../middleware/limiter");
 
 router.get("/my-resumes", limiter, authMiddleware, async (req, res) => {
   try {
-    const myResumes = await Resume.find({userId: req.user._id,}).sort({ createdAt: -1 });
+    const MyResumes = await Resume.find({userId: req.user._id,}).sort({ createdAt: -1 });
 
     return res.status(200).json({
       success: true,
-      myResumes,
+      MyResumes,
     });
   } catch (err) {
     console.error(err);

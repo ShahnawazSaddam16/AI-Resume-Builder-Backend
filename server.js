@@ -7,6 +7,7 @@ const Auth = require("./src/controllers/auth");
 const Plan = require("./src/controllers/plan");
 const AIResume = require("./src/controllers/ai-resume");
 const Billing = require("./src/controllers/billing");
+const MyResume = require("./src/controllers/my-resume");
 
 dotenv.config();
 
@@ -28,6 +29,7 @@ app.use("/api/auth", Auth);
 app.use("/api", Plan);
 app.use("/api", AIResume);
 app.use("/api", Billing);
+app.use("/api", MyResume);
 
 // Mongoose connect
 dbConnection();

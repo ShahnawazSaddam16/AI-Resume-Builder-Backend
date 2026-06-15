@@ -6,9 +6,9 @@ const resumeSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
-    email:{
+    email: {
       type: String,
-      required: true
+      required: true,
     },
     prompt: {
       type: String,
@@ -23,6 +23,14 @@ const resumeSchema = new mongoose.Schema(
       type: String,
       default: "blue",
       enum: ["blue", "green", "black", "purple", "orange", "teal"],
+    },
+    atsScore: {
+      type: Number,
+      default: 0,
+    },
+    atsBreakdown: {
+      type: Object,
+      default: {},
     },
   },
   { timestamps: true }

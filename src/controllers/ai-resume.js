@@ -35,36 +35,60 @@ function calculateAtsScore(resumeData) {
   const hasEmail = !!resumeData.email?.trim();
   const hasPhone = !!resumeData.phone?.trim();
   const hasLocation = !!resumeData.location?.trim();
-  const contactScore = [hasName, hasEmail, hasPhone, hasLocation].filter(Boolean).length * 5;
+  const contactScore =
+    [hasName, hasEmail, hasPhone, hasLocation].filter(Boolean).length * 5;
   breakdown.contact = contactScore;
   score += contactScore;
 
-  const summaryScore = resumeData.summary?.trim().split(/\s+/).length >= 30 ? 15 : resumeData.summary?.trim() ? 8 : 0;
+  const summaryScore =
+    resumeData.summary?.trim().split(/\s+/).length >= 30
+      ? 15
+      : resumeData.summary?.trim()
+        ? 8
+        : 0;
   breakdown.summary = summaryScore;
   score += summaryScore;
 
-  const skillsCount = Array.isArray(resumeData.skills) ? resumeData.skills.length : 0;
-  const skillsScore = skillsCount >= 8 ? 15 : skillsCount >= 4 ? 10 : skillsCount > 0 ? 5 : 0;
+  const skillsCount = Array.isArray(resumeData.skills)
+    ? resumeData.skills.length
+    : 0;
+  const skillsScore =
+    skillsCount >= 8 ? 15 : skillsCount >= 4 ? 10 : skillsCount > 0 ? 5 : 0;
   breakdown.skills = skillsScore;
   score += skillsScore;
 
-  const expCount = Array.isArray(resumeData.experience) ? resumeData.experience.length : 0;
+  const expCount = Array.isArray(resumeData.experience)
+    ? resumeData.experience.length
+    : 0;
   const expScore = expCount >= 3 ? 20 : expCount >= 1 ? 12 : 0;
   breakdown.experience = expScore;
   score += expScore;
 
-  const eduCount = Array.isArray(resumeData.education) ? resumeData.education.length : 0;
+  const eduCount = Array.isArray(resumeData.education)
+    ? resumeData.education.length
+    : 0;
   const eduScore = eduCount >= 1 ? 10 : 0;
   breakdown.education = eduScore;
   score += eduScore;
 
-  const projCount = Array.isArray(resumeData.projects) ? resumeData.projects.length : 0;
+  const projCount = Array.isArray(resumeData.projects)
+    ? resumeData.projects.length
+    : 0;
   const projScore = projCount >= 2 ? 10 : projCount >= 1 ? 5 : 0;
   breakdown.projects = projScore;
   score += projScore;
 
-  const keywordsCount = Array.isArray(resumeData.keywords) ? resumeData.keywords.length : 0;
-  const keywordsScore = keywordsCount >= 10 ? 10 : keywordsCount >= 5 ? 6 : keywordsCount > 0 ? 3 : 0;
+  const keywordsCount = Array.isArray(resumeData.keywords)
+    ? resumeData.keywords.length
+    : 0;
+  const keywordsScore =
+    keywordsCount >= 10
+      ? 10
+      : keywordsCount >= 5
+        ? 6
+        : keywordsCount > 0
+          ? 3
+          : 0;
   breakdown.keywords = keywordsScore;
   score += keywordsScore;
 
@@ -221,8 +245,7 @@ Generate a complete ATS resume and return ONLY this JSON structure:
         ],
       });
 
-      const rawResume =
-        completion.choices?.[0]?.message?.content?.trim() || "";
+      const rawResume = completion.choices?.[0]?.message?.content?.trim() || "";
 
       let resumeData;
 
@@ -237,10 +260,7 @@ Generate a complete ATS resume and return ONLY this JSON structure:
 
       const atsResult = calculateAtsScore(resumeData);
 
-      const pdfBuffer = await generateResumePdf(
-        resumeData,
-        finalTemplate
-      );
+      const pdfBuffer = await generateResumePdf(resumeData, finalTemplate);
 
       const savedResume = await Resume.create({
         userId: req.user ? req.user._id : null,
@@ -249,8 +269,11 @@ Generate a complete ATS resume and return ONLY this JSON structure:
         resumeText: JSON.stringify(resumeData),
         pdf: pdfBuffer,
         template: finalTemplate,
+        atsScore: atsResult.score,
+        atsBreakdown: atsResult.breakdown,
       });
 
+      
       res.status(200).json({
         success: true,
         resume: resumeData,
@@ -273,7 +296,7 @@ Generate a complete ATS resume and return ONLY this JSON structure:
         message: error.message,
       });
     }
-  }
+  },
 );
 
 module.exports = router;

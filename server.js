@@ -8,6 +8,7 @@ const Plan = require("./src/controllers/plan");
 const AIResume = require("./src/controllers/ai-resume");
 const Billing = require("./src/controllers/billing");
 const MyResume = require("./src/controllers/my-resume");
+const Profile = require("./src/controllers/profile");
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ app.use("/api", Plan);
 app.use("/api", AIResume);
 app.use("/api", Billing);
 app.use("/api", MyResume);
+app.use("/api", Profile);
 
 // Mongoose connect
 dbConnection();

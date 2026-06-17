@@ -11,6 +11,8 @@ const PLAN_META = {
   starter: {
     name: "Starter",
     color: "#64748b",
+    monthly: 0,
+    yearly: 0,
     features: [
       "1 AI-generated resume",
       "3 templates",
@@ -22,6 +24,8 @@ const PLAN_META = {
   pro: {
     name: "Pro",
     color: "#2563eb",
+    monthly: 12,
+    yearly: 9,
     features: [
       "Unlimited AI resumes",
       "20+ premium templates",
@@ -35,6 +39,8 @@ const PLAN_META = {
   elite: {
     name: "Elite",
     color: "#7c3aed",
+    monthly: 29,
+    yearly: 22,
     features: [
       "Everything in Pro",
       "Unlimited cover letters",
@@ -61,58 +67,75 @@ const buildDates = (billing) => {
   return { startDate, endDate };
 };
 
-router.post("/create-payment-intent", authMiddleware, limiter, async (req, res) => {
-  try {
-    const { planId, billing, price } = req.body;
 
-    if (!planId || !billing || !price) {
-      return res.status(400).json({
+router.post(
+  "/create-payment-intent",
+  authMiddleware,
+  limiter,
+  async (req, res) => {
+    try {
+      const { planId, billing } = req.body;
+
+      if (!planId || !billing) {
+        return res.status(400).json({
+          success: false,
+          message: "planId and billing are required",
+        });
+      }
+
+      const plan = PLAN_META[planId];
+
+      if (!plan) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid planId",
+        });
+      }
+
+      const pricePerMonth = plan[billing];
+
+      if (!pricePerMonth) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid billing type",
+        });
+      }
+      const amount =
+        billing === "yearly"
+          ? Math.round(pricePerMonth * 12 * 100)
+          : Math.round(pricePerMonth * 100);
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount,
+        currency: "usd",
+        metadata: {
+          userId: req.user._id.toString(),
+          email: req.user.email,
+          planId,
+          billing,
+          pricePerMonth: String(pricePerMonth),
+        },
+      });
+
+      return res.json({
+        success: true,
+        clientSecret: paymentIntent.client_secret,
+      });
+    } catch (err) {
+      return res.status(500).json({
         success: false,
-        message: "planId, billing and price are required",
+        message: err.message,
       });
     }
-
-    const amount =
-      billing === "yearly" ? Number(price) * 12 * 100 : Number(price) * 100;
-
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount,
-      currency: "usd",
-      metadata: {
-        userId: req.user._id.toString(),
-        email: req.user.email,
-        planId,
-        billing,
-        pricePerMonth: String(price),
-      },
-    });
-
-    res.json({
-      success: true,
-      clientSecret: paymentIntent.client_secret,
-    });
-  } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
   }
-});
+);
+
 
 router.post("/create-plan", authMiddleware, limiter, async (req, res) => {
   try {
     const { planId, billing, price, stripePaymentIntentId } = req.body;
 
-    if (!planId || !billing || !price) {
-      return res.status(400).json({
-        success: false,
-        message: "planId, billing and price are required",
-      });
-    }
-
-    const existing = await Plan.findOne({
-      userId: req.user._id,
-    });
+    const existing = await Plan.findOne({ userId: req.user._id });
 
     if (existing) {
       return res.status(409).json({
@@ -140,28 +163,18 @@ router.post("/create-plan", authMiddleware, limiter, async (req, res) => {
       endDate,
     });
 
-    res.status(201).json({
-      success: true,
-      plan,
-    });
+    res.status(201).json({ success: true, plan });
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
+/**
+ * UPDATE PLAN
+ */
 router.put("/update-plan", authMiddleware, limiter, async (req, res) => {
   try {
     const { planId, billing, price, stripePaymentIntentId } = req.body;
-
-    if (!planId || !billing || !price) {
-      return res.status(400).json({
-        success: false,
-        message: "planId, billing and price are required",
-      });
-    }
 
     const meta = PLAN_META[planId] || PLAN_META.pro;
     const { startDate, endDate } = buildDates(billing);
@@ -183,43 +196,29 @@ router.put("/update-plan", authMiddleware, limiter, async (req, res) => {
         startDate,
         endDate,
       },
-      {
-        new: true,
-        upsert: true,
-      },
+      { new: true, upsert: true }
     );
 
-    res.json({
-      success: true,
-      plan,
-    });
+    res.json({ success: true, plan });
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
+
 
 router.get("/my-plan", authMiddleware, async (req, res) => {
   try {
-    const plan = await Plan.findOne({
-      userId: req.user._id,
-    });
-    res.json({
-      success: true,
-      plan,
-    });
+    const plan = await Plan.findOne({ userId: req.user._id });
+    res.json({ success: true, plan });
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: err.message,
-    });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
+
 router.post(
-  "/webhook", limiter,
+  "/webhook",
+  limiter,
   express.raw({ type: "application/json" }),
   async (req, res) => {
     const sig = req.headers["stripe-signature"];
@@ -229,7 +228,7 @@ router.post(
       event = stripe.webhooks.constructEvent(
         req.body,
         sig,
-        process.env.STRIPE_WEBHOOK_SECRET,
+        process.env.STRIPE_WEBHOOK_SECRET
       );
     } catch (err) {
       return res.status(400).json({
@@ -239,8 +238,8 @@ router.post(
 
     if (event.type === "payment_intent.succeeded") {
       const intent = event.data.object;
-
-      const { userId, email, planId, billing, pricePerMonth } = intent.metadata;
+      const { userId, email, planId, billing, pricePerMonth } =
+        intent.metadata;
 
       const meta = PLAN_META[planId] || PLAN_META.pro;
       const { startDate, endDate } = buildDates(billing);
@@ -265,10 +264,7 @@ router.post(
           startDate,
           endDate,
         },
-        {
-          new: true,
-          upsert: true,
-        },
+        { new: true, upsert: true }
       );
     }
 
@@ -276,18 +272,11 @@ router.post(
       const intent = event.data.object;
       const { userId } = intent.metadata;
 
-      await Plan.findOneAndUpdate(
-        { userId },
-        {
-          status: "failed",
-        },
-      );
+      await Plan.findOneAndUpdate({ userId }, { status: "failed" });
     }
 
-    res.json({
-      received: true,
-    });
-  },
+    res.json({ received: true });
+  }
 );
 
 module.exports = router;

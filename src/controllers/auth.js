@@ -9,6 +9,7 @@ const limiter = require("../middleware/limiter");
 const Plan = require("../Models/plan");
 const Resume = require("../Models/ai-resumer");
 const Billing = require("../Models/billing");
+const Profile = require("../Models/profile");
 
 const router = express.Router();
 
@@ -199,6 +200,7 @@ router.delete("/delete-account", authMiddleware, limiter, async (req, res) => {
     await Resume.deleteMany({ userId });
     await Plan.deleteMany({userId});
     await Billing.deleteMany({userId});
+    await Profile.deleteMany({userId});
 
     await User.findByIdAndDelete(userId);
 

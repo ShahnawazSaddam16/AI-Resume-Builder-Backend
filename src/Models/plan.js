@@ -92,4 +92,16 @@ PlanSchema.post("findByIdAndDelete", async function (doc) {
   });
 });
 
-module.exports = mongoose.model("Plan", PlanSchema);
+const Plan = mongoose.model("Plan", PlanSchema);
+
+async function deleteExpiredPlans() {
+  const expiredPlans = await Plan.find({ endDate: { $lte: new Date() } }).select("_id userId");
+
+  for (const plan of expiredPlans) {
+    await Plan.findOneAndDelete({ _id: plan._id, userId: plan.userId });
+  }
+}
+
+setInterval(deleteExpiredPlans, 60 * 1000);
+
+module.exports = Plan;

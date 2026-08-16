@@ -114,10 +114,10 @@ router.post(
         : "";
 
       const completion = await groq.chat.completions.create({
-        model: "qwen/qwen3.6-27b",
+        model: "llama-3.3-70b-versatile",
         temperature: 0.7,
         max_tokens: 4096,
-        response_format: { type: "json_object" },
+       response_format: { type: "json_object" },
         messages: [
           {
             role: "system",

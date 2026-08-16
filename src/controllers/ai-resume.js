@@ -116,6 +116,8 @@ router.post(
       const completion = await groq.chat.completions.create({
         model: "qwen/qwen3.6-27b",
         temperature: 0.7,
+        max_tokens: 4096,
+        response_format: { type: "json_object" },
         messages: [
           {
             role: "system",
@@ -200,7 +202,6 @@ Generate a complete ATS resume and return ONLY this JSON structure:
         atsBreakdown: atsResult.breakdown,
       });
 
-      
       res.status(200).json({
         success: true,
         resume: resumeData,

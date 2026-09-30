@@ -95,15 +95,13 @@ router.post(
 
       const hasPdf = !!req.file;
 
-      const wordCount = prompt
-        ? prompt.trim().split(/\s+/).filter(Boolean).length
-        : 0;
+      const charCount = prompt ? prompt.trim().length : 0;
 
-      if (!hasPdf && wordCount < 50) {
+      if (!hasPdf && charCount < 10) {
         return res.status(400).json({
           success: false,
           message:
-            "Provide either a PDF resume or a prompt containing at least 50 words.",
+            "Provide either a PDF resume or a prompt containing at least 10 characters.",
         });
       }
 

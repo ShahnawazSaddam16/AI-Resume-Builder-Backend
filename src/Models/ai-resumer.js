@@ -32,6 +32,10 @@ const resumeSchema = new mongoose.Schema(
       type: Object,
       default: {},
     },
+    isFreeGeneration: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

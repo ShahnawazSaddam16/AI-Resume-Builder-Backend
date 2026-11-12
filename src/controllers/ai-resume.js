@@ -1,7 +1,6 @@
 require("dotenv").config();
 const express = require("express");
 const router = express.Router();
-const mongoose = require("mongoose");
 const limiter = require("../middleware/limiter");
 const multer = require("multer");
 const Groq = require("groq-sdk");
@@ -44,18 +43,11 @@ router.post(
         userId: req.user._id,
       });
 
-      const wasPaid =
-        !!userPlan &&
-        (userPlan.planId === "pro" ||
-          userPlan.planId === "elite" ||
-          Number(userPlan.pricePerMonth) > 0);
-
       const isPaidActive =
-        wasPaid &&
+        !!userPlan &&
+        (userPlan.planId === "pro" || userPlan.planId === "elite") &&
         !!userPlan.endDate &&
-        new Date(userPlan.endDate) > new Date();
-
-      const isPaidExpired = wasPaid && !isPaidActive;
+        new Date(userPlan.endDate).getTime() > Date.now();
 
       let limit = 1;
 
@@ -63,18 +55,10 @@ router.post(
         limit = Infinity;
       }
 
-      const countQuery = { userId: req.user._id };
-
-      if (isPaidExpired && userPlan.endDate) {
-        const expirySeconds = Math.floor(
-          new Date(userPlan.endDate).getTime() / 1000,
-        );
-        countQuery._id = {
-          $gt: mongoose.Types.ObjectId.createFromTime(expirySeconds),
-        };
-      }
-
-      const userResumeCount = await Resume.countDocuments(countQuery);
+      const userResumeCount = await Resume.countDocuments({
+        userId: req.user._id,
+        isFreeGeneration: true,
+      });
 
       if (limit !== Infinity && userResumeCount >= limit) {
         return res.status(403).json({
@@ -216,6 +200,7 @@ Generate a complete ATS resume and return ONLY this JSON structure:
         template: finalTemplate,
         atsScore: atsResult.score,
         atsBreakdown: atsResult.breakdown,
+        isFreeGeneration: !isPaidActive,
       });
 
       res.status(200).json({

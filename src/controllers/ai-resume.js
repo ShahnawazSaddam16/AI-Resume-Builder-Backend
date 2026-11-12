@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const router = express.Router();
+const mongoose = require("mongoose");
 const limiter = require("../middleware/limiter");
 const multer = require("multer");
 const Groq = require("groq-sdk");
@@ -43,15 +44,18 @@ router.post(
         userId: req.user._id,
       });
 
-      const isPaidPlan =
-        !!userPlan && (userPlan.planId === "pro" || userPlan.planId === "elite");
+      const wasPaid =
+        !!userPlan &&
+        (userPlan.planId === "pro" ||
+          userPlan.planId === "elite" ||
+          Number(userPlan.pricePerMonth) > 0);
 
       const isPaidActive =
-        isPaidPlan &&
+        wasPaid &&
         !!userPlan.endDate &&
         new Date(userPlan.endDate) > new Date();
 
-      const isPaidExpired = isPaidPlan && !isPaidActive;
+      const isPaidExpired = wasPaid && !isPaidActive;
 
       let limit = 1;
 
@@ -62,7 +66,12 @@ router.post(
       const countQuery = { userId: req.user._id };
 
       if (isPaidExpired && userPlan.endDate) {
-        countQuery.createdAt = { $gt: new Date(userPlan.endDate) };
+        const expirySeconds = Math.floor(
+          new Date(userPlan.endDate).getTime() / 1000,
+        );
+        countQuery._id = {
+          $gt: mongoose.Types.ObjectId.createFromTime(expirySeconds),
+        };
       }
 
       const userResumeCount = await Resume.countDocuments(countQuery);

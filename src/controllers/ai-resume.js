@@ -43,17 +43,29 @@ router.post(
         userId: req.user._id,
       });
 
+      const isPaidPlan =
+        !!userPlan && (userPlan.planId === "pro" || userPlan.planId === "elite");
+
+      const isPaidActive =
+        isPaidPlan &&
+        !!userPlan.endDate &&
+        new Date(userPlan.endDate) > new Date();
+
+      const isPaidExpired = isPaidPlan && !isPaidActive;
+
       let limit = 1;
 
-      if (userPlan) {
-        if (userPlan.planId === "pro" || userPlan.planId === "elite") {
-          limit = Infinity;
-        }
+      if (isPaidActive) {
+        limit = Infinity;
       }
 
-      const userResumeCount = await Resume.countDocuments({
-        userId: req.user._id,
-      });
+      const countQuery = { userId: req.user._id };
+
+      if (isPaidExpired && userPlan.endDate) {
+        countQuery.createdAt = { $gt: new Date(userPlan.endDate) };
+      }
+
+      const userResumeCount = await Resume.countDocuments(countQuery);
 
       if (limit !== Infinity && userResumeCount >= limit) {
         return res.status(403).json({
@@ -68,10 +80,7 @@ router.post(
 
       let isPremium = false;
 
-      if (
-        userPlan &&
-        (userPlan.planId === "pro" || userPlan.planId === "elite")
-      ) {
+      if (isPaidActive) {
         allowedThemes = themes;
         isPremium = true;
       }

@@ -58,6 +58,7 @@ router.post(
       const userResumeCount = await Resume.countDocuments({
         userId: req.user._id,
         isFreeGeneration: true,
+        createdAt: { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
       });
 
       if (limit !== Infinity && userResumeCount >= limit) {
